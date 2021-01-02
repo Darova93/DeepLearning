@@ -1,10 +1,7 @@
 import time
 import numpy as np
-import h5py
 import matplotlib.pyplot as plt
-import scipy
 from PIL import Image
-from scipy import ndimage
 from dnn_app_utils_v3 import *
 
 
@@ -222,7 +219,7 @@ def evaluate_image(image_name, parameters, is_cat=True):
     # plt.imshow(image)
     # plt.show()
     print("y = " + str(np.squeeze(my_predicted_image)) + ", your L-layer model predicts a \"" + classes[
-        int(np.squeeze(my_predicted_image)),].decode("utf-8") + "\" picture.")
+        int(np.squeeze(my_predicted_image)), ].decode("utf-8") + "\" picture.")
 
 
 if __name__ == '__main__':

@@ -3,18 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
 from dnn_app_utils_v3 import *
-
-
-def initialize_parameters_deep(layer_dims):
-    parameters = {}
-    for i in range(1, len(layer_dims)):
-        parameters['W'+str(i)] = np.random.randn(layer_dims[i], layer_dims[i-1]) / np.sqrt(layer_dims[i-1])
-        parameters['b'+str(i)] = np.zeros((layer_dims[i], 1))
-
-        assert (parameters['W'+str(i)].shape == (layer_dims[i], layer_dims[i - 1]))
-        assert (parameters['b'+str(i)].shape == (layer_dims[i], 1))
-
-    return parameters
+from parameter_initializer import InitType, ParameterInitializer
 
 
 def linear_forward(a, w, b):
@@ -151,7 +140,8 @@ def display_image(index):
 
 def nn_model(x, y, layers_dimensions, learning_rate=0.0075, num_iterations=3000, print_cost=False):
     costs = []
-    parameters = initialize_parameters_deep(layers_dimensions)
+    np.random.seed(1)
+    parameters = ParameterInitializer(layers_dimensions, InitType.Xavier).initialize()
 
     for i in range(0, num_iterations):
         al, caches = l_model_forward(x, parameters)
@@ -240,4 +230,4 @@ if __name__ == '__main__':
     predictions_train = predict(train_x, train_y, trained_parameters)
     predictions_test = predict(test_x, test_y, trained_parameters)
 
-    evaluate_image('datasets/cat.png', trained_parameters)
+    # evaluate_image('datasets/cat.png', trained_parameters)

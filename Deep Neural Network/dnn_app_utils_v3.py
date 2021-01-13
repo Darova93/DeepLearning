@@ -1,42 +1,6 @@
 import numpy as np
+import scipy.io
 import h5py
-
-
-def sigmoid(z):
-    a = 1 / (1 + np.exp(-z))
-    cache = z
-
-    return a, cache
-
-
-def relu(z):
-    a = np.maximum(0, z)
-
-    assert (a.shape == z.shape)
-
-    cache = z
-    return a, cache
-
-
-def relu_backward(d_a, cache):
-    z = cache
-    d_z = np.array(d_a, copy=True)
-    d_z[z <= 0] = 0
-
-    assert (d_z.shape == z.shape)
-
-    return d_z
-
-
-def sigmoid_backward(d_a, cache):
-    z = cache
-
-    s = 1 / (1 + np.exp(-z))
-    d_z = d_a * s * (1 - s)
-
-    assert (d_z.shape == z.shape)
-
-    return d_z
 
 
 def load_data():
@@ -60,3 +24,13 @@ def load_data():
     test_x_data = test_x_flatten / 255.
 
     return train_x_data, train_set_y_orig, test_x_data, test_set_y_orig, classes
+
+
+def load_2d_dataset():
+    data = scipy.io.loadmat('datasets/data.mat')
+    train_x = data['X'].T
+    train_y = data['y'].T
+    test_x = data['Xval'].T
+    test_y = data['yval'].T
+
+    return train_x, train_y, test_x, test_y

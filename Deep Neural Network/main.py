@@ -1,124 +1,10 @@
-import time
-import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
 from dnn_app_utils_v3 import *
 from parameter_initializer import InitType, ParameterInitializer
-
-
-def linear_forward(a, w, b):
-    z = np.dot(w, a) + b
-
-    assert(z.shape == (w.shape[0], a.shape[1]))
-    cache = (a, w, b)
-
-    return z, cache
-
-
-def linear_activation_forward(a_prev, w, b, activation):
-    if activation == 'sigmoid':
-        z, linear_cache = linear_forward(a_prev, w, b)
-        a, activation_cache = sigmoid(z)
-    elif activation == 'relu':
-        z, linear_cache = linear_forward(a_prev, w, b)
-        a, activation_cache = relu(z)
-    else:
-        raise Exception('Unknown activation function {}'.format(activation))
-
-    assert (a.shape == (w.shape[0], a_prev.shape[1]))
-    cache = (linear_cache, activation_cache)
-
-    return a, cache
-
-
-def l_model_forward(x, parameters):
-    caches = []
-    a = x
-    number_of_layers = len(parameters)//2
-
-    for layer_index in range(1, number_of_layers):
-        a_prev = a
-        a, cache = linear_activation_forward(
-                    a_prev,
-                    parameters['W'+str(layer_index)],
-                    parameters['b'+str(layer_index)],
-                    'relu')
-        caches.append(cache)
-
-    al, cache = linear_activation_forward(
-                a,
-                parameters['W'+str(number_of_layers)],
-                parameters['b'+str(number_of_layers)],
-                'sigmoid')
-    caches.append(cache)
-
-    assert (al.shape == (1, x.shape[1]))
-
-    return al, caches
-
-
-def compute_cost(a, y):
-    m = y.shape[1]
-    cost = -(1./m) * np.sum(y*np.log(a)+(1-y)*np.log(1-a), axis=1, keepdims=True)
-
-    cost = np.squeeze(cost)
-    assert (cost.shape == ())
-
-    return cost
-
-
-def linear_backward(d_z, cache):
-    a_prev, w, b = cache
-    m = a_prev.shape[1]
-
-    d_w = (1/m) * np.dot(d_z, a_prev.T)
-    d_b = (1/m) * np.sum(d_z, axis=1, keepdims=True)
-    d_a_prev = np.dot(w.T, d_z)
-
-    assert (d_a_prev.shape == a_prev.shape)
-    assert (d_w.shape == w.shape)
-    assert (d_b.shape == b.shape)
-
-    return d_a_prev, d_w, d_b
-
-
-def linear_activation_backward(d_a, cache, activation):
-    linear_cache, activation_cache = cache
-
-    if activation == 'relu':
-        d_z = relu_backward(d_a, activation_cache)
-        d_a_prev, d_w, d_b = linear_backward(d_z, linear_cache)
-    elif activation == 'sigmoid':
-        d_z = sigmoid_backward(d_a, activation_cache)
-        d_a_prev, d_w, d_b = linear_backward(d_z, linear_cache)
-    else:
-        raise Exception('Unknown activation function {}'.format(activation))
-
-    return d_a_prev, d_w, d_b
-
-
-def l_model_backward(al, y, caches):
-    grads = {}
-    length = len(caches)
-    m = al.shape[1]
-    y = y.reshape(al.shape)
-
-    d_al = -(np.divide(y, al) - np.divide(1-y, 1-al))
-
-    current_cache = caches[length-1]
-    grads["dA" + str(length-1)], grads["dW" + str(length)], grads["db" + str(length)] = linear_activation_backward(
-                                                                                            d_al,
-                                                                                            current_cache,
-                                                                                            'sigmoid')
-
-    for i in reversed(range(length - 1)):
-        current_cache = caches[i]
-        da_prev_temp, dw_temp, db_temp = linear_activation_backward(grads['dA' + str(i+1)], current_cache, 'relu')
-        grads["dA" + str(i)] = da_prev_temp
-        grads["dW" + str(i+1)] = dw_temp
-        grads["db" + str(i+1)] = db_temp
-
-    return grads
+from cost_calculator import CostType, Cost
+from forward_propagation import FwdPropType, ForwardPropagation
+from backward_propagation import BwdPropType, BackwardPropagation
 
 
 def update_parameter(initial_parameters, grads, learning_rate):
@@ -144,9 +30,9 @@ def nn_model(x, y, layers_dimensions, learning_rate=0.0075, num_iterations=3000,
     parameters = ParameterInitializer(layers_dimensions, InitType.Xavier).initialize()
 
     for i in range(0, num_iterations):
-        al, caches = l_model_forward(x, parameters)
-        cost = compute_cost(al, y)
-        grads = l_model_backward(al, y, caches)
+        al, caches = ForwardPropagation(FwdPropType.Backdrop, keep_prob=0.86).compute(x, parameters)
+        cost = Cost(CostType.Default, hyp_lambda=0.7).compute(al, y, parameters)
+        grads = BackwardPropagation(BwdPropType.Backdrop, hyp_lambda=0.7, keep_prob=0.86).compute(al, y, caches)
         parameters = update_parameter(parameters, grads, learning_rate)
 
         if print_cost and i % 100 == 0:
@@ -167,7 +53,7 @@ def predict(x, y, parameters):
     n = len(parameters) // 2
     p = np.zeros((1, m))
 
-    probas, caches = l_model_forward(x, parameters)
+    probas, caches = ForwardPropagation(FwdPropType.Default).compute(x, parameters)
 
     for i in range(0, probas.shape[1]):
         if probas[0, i] > 0.5:
@@ -217,17 +103,20 @@ if __name__ == '__main__':
     plt.rcParams['image.interpolation'] = 'nearest'
     plt.rcParams['image.cmap'] = 'gray'
 
-    train_x, train_y, test_x, test_y, classes = load_data()
-    layers_dims = (12288, 20, 7, 5, 1)
+    # train_x, train_y, test_x, test_y, classes = load_data()  # 2500, 0.0075, (12288, 20, 7, 5, 1)
+    train_x, train_y, test_x, test_y = load_2d_dataset()  # 30000, 0.3, (2, 20, 3, 1)
+    layers_dims = (train_x.shape[0], 20, 3, 1)
 
     trained_parameters = nn_model(train_x,
                                   train_y,
                                   layers_dims,
-                                  learning_rate=0.0075,
-                                  num_iterations=2500,
+                                  learning_rate=0.3,
+                                  num_iterations=30000,
                                   print_cost=True)
 
+    print('Train set accuracy')
     predictions_train = predict(train_x, train_y, trained_parameters)
+    print('Dev set accuracy')
     predictions_test = predict(test_x, test_y, trained_parameters)
 
     # evaluate_image('datasets/cat.png', trained_parameters)

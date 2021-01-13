@@ -12,7 +12,7 @@ class ParameterInitializer:
     layer_dims = []
     init_type = InitType.Default
     factors = {
-        InitType.Default: lambda x: 1./np.sqrt(x),
+        InitType.Default: lambda x: x * 0.01,
         InitType.Xavier: lambda x: np.sqrt(1./x),
         InitType.He: lambda x: np.sqrt(2./x),
     }
@@ -20,12 +20,12 @@ class ParameterInitializer:
     def __init__(self, layer_dims, init_type=InitType.Default):
         self.layer_dims = layer_dims
         self.init_type = init_type
-        np.random.seed(1)
 
     def initialize(self):
         return self.__create_parameters(self.factors[self.init_type])
 
     def __create_parameters(self, factor):
+        np.random.seed(3)
         parameters = {}
         for i in range(1, len(self.layer_dims)):
             parameters['W'+str(i)] = np.random.randn(self.layer_dims[i], self.layer_dims[i-1]) \
@@ -39,3 +39,15 @@ class ParameterInitializer:
         for i in range(1, len(self.layer_dims)):
             assert (parameters['W' + str(i)].shape == (self.layer_dims[i], self.layer_dims[i - 1]))
             assert (parameters['b' + str(i)].shape == (self.layer_dims[i], 1))
+
+    @staticmethod
+    def __parameters_obj(parameters):
+        w = []
+        b = []
+        params = {'W': w, 'b': b}
+        for item in parameters:
+            if item.startswith('W'):
+                params['W'].append(parameters[item])
+            else:
+                params['b'].append(parameters[item])
+        return params
